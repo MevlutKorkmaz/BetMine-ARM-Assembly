@@ -33,78 +33,29 @@ IDLE:
 ldr r0,=GAME_STARTED
 ldr r0,[r0]
 cmp r0,#2
+
 blgt main
-	B IDLE // main program simply idles
+
+B IDLE // main program simply idles
 
 main:
+PUSH {r0-r12,LR}
+main_loop:
 MOV R1, #0b11010011 // interrupts masked, MODE = SVC
 MSR CPSR, R1 // change to supervisor mode
+LDR R0,=0xFF200000
+LDR R1,[R0] //LED
+LDR R2,=0xFF200040
+LDR R3,[R2] //SWICH
+ANDS R6,R3,R1
+STREQ R3,[R0]
+
+b main_loop
+POP {r0-r12,PC}
 
 
 
-/* Define the exception service routines */
-/*--- Undefined instructions --------------------------------------------------*/
-SERVICE_UND:
-	B SERVICE_UND
-/*--- Software interrupts -----------------------------------------------------*/
-SERVICE_SVC:
-	B SERVICE_SVC
-/*--- Aborted data reads ------------------------------------------------------*/
-SERVICE_ABT_DATA:
-	B SERVICE_ABT_DATA
-/*--- Aborted instruction fetch -----------------------------------------------*/
-SERVICE_ABT_INST:
-	B SERVICE_ABT_INST
 
-/*--- IRQ ---------------------------------------------------------------------*/
-SERVICE_IRQ:
-	PUSH {R0-R7, LR}
-	/* Read the ICCIAR from the CPU Interface */
-	LDR R4, =0xFFFEC100
-	LDR R5, [R4, #0x0C] // read from ICCIAR
-	
-INTERVAL_TIMER_CHECK:
-CMP R5, #72 // check for FPGA timer interrupt
-BNE PRIVATE_TIMER_CHECK
-BL INTERVAL_TIMER_ISR
-B EXIT_IRQ
-PRIVATE_TIMER_CHECK:
-CMP R5, #29 // check for FPGA timer interrupt
-BNE FPGA_IRQ1_HANDLER
-BL PRIVATE_TIMER_ISR
-B EXIT_IRQ
-FPGA_IRQ1_HANDLER:
-	CMP R5, #73
-UNEXPECTED:
-	BNE UNEXPECTED // if not recognized, stop here
-	BL KEY_ISR
-EXIT_IRQ:
-	/* Write to the End of Interrupt Register (ICCEOIR) */
-	STR R5, [R4, #0x10] // write to ICCEOIR
-	POP {R0-R7, LR}
-	SUBS PC, LR, #4
-/*--- FIQ ---------------------------------------------------------------------*/
-	SERVICE_FIQ:
-	B SERVICE_FIQ
-
-/* ^^^^ END of Define the exception service routines ^^^^ */
-
-
-PRIVATE_TIMER_ISR:
-
-LDR R1, =0xFFFEC600 // interval timer base address
-MOV R0, #1
-STR R0, [R1,#12] // clear the interrupt
-
-BX LR
-
-INTERVAL_TIMER_ISR:
-
-LDR R1, =0xFF202000 // interval timer base address
-MOVS R0, #0
-STR R0, [R1] // clear the interrupt
-
-BX LR
 
 /*************************************************************************
 * Pushbutton - Interrupt Service Routine
@@ -119,6 +70,7 @@ NUMBER_OF_MINES: .word 0
 GAME_STARTED: .word 0
 MINE_LOCATIONS: .WORD 0
 LOCATIONS: .WORD 0,1,2,3,4,5,6,7,8,9
+MULTIPLIER: .WORD 13,15,19,22,30,10,150
 BET_AMOUNT: .WORD 100
 BALANCE: .WORD 1000
 KEY_ISR:
@@ -271,6 +223,75 @@ bx lr
 HEXTABLE:.word 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F
 DIVISORS:.WORD 0x3E8,0x64,0xA,0x1
 .equ ADDR_7SEG1, 0xFF200020
+
+
+
+
+
+/* Define the exception service routines */
+/*--- Undefined instructions --------------------------------------------------*/
+SERVICE_UND:
+	B SERVICE_UND
+/*--- Software interrupts -----------------------------------------------------*/
+SERVICE_SVC:
+	B SERVICE_SVC
+/*--- Aborted data reads ------------------------------------------------------*/
+SERVICE_ABT_DATA:
+	B SERVICE_ABT_DATA
+/*--- Aborted instruction fetch -----------------------------------------------*/
+SERVICE_ABT_INST:
+	B SERVICE_ABT_INST
+
+/*--- IRQ ---------------------------------------------------------------------*/
+SERVICE_IRQ:
+	PUSH {R0-R7, LR}
+	/* Read the ICCIAR from the CPU Interface */
+	LDR R4, =0xFFFEC100
+	LDR R5, [R4, #0x0C] // read from ICCIAR
+	
+INTERVAL_TIMER_CHECK:
+CMP R5, #72 // check for FPGA timer interrupt
+BNE PRIVATE_TIMER_CHECK
+BL INTERVAL_TIMER_ISR
+B EXIT_IRQ
+PRIVATE_TIMER_CHECK:
+CMP R5, #29 // check for FPGA timer interrupt
+BNE FPGA_IRQ1_HANDLER
+BL PRIVATE_TIMER_ISR
+B EXIT_IRQ
+FPGA_IRQ1_HANDLER:
+	CMP R5, #73
+UNEXPECTED:
+	BNE UNEXPECTED // if not recognized, stop here
+	BL KEY_ISR
+EXIT_IRQ:
+	/* Write to the End of Interrupt Register (ICCEOIR) */
+	STR R5, [R4, #0x10] // write to ICCEOIR
+	POP {R0-R7, LR}
+	SUBS PC, LR, #4
+/*--- FIQ ---------------------------------------------------------------------*/
+	SERVICE_FIQ:
+	B SERVICE_FIQ
+
+/* ^^^^ END of Define the exception service routines ^^^^ */
+
+
+PRIVATE_TIMER_ISR:
+
+LDR R1, =0xFFFEC600 // interval timer base address
+MOV R0, #1
+STR R0, [R1,#12] // clear the interrupt
+
+BX LR
+
+INTERVAL_TIMER_ISR:
+
+LDR R1, =0xFF202000 // interval timer base address
+MOVS R0, #0
+STR R0, [R1] // clear the interrupt
+
+BX LR
+
 
 //CONFIGURATIONS
 
