@@ -22,7 +22,7 @@ _start:
 	
 BL CONFIG_GIC // configure the ARM GIC
 BL CONFIG_KEYS // configure the pushbutton KEYs
-BL CONFIG_INTERVAL_TIMER // configure the FPGA interval timer
+
 BL CONFIG_PRIVATE_TIMER // configure the PRIVATE timer
 
 	// enable IRQ interrupts in the processor
@@ -545,11 +545,7 @@ SERVICE_IRQ:
 	LDR R4, =0xFFFEC100
 	LDR R5, [R4, #0x0C] // read from ICCIAR
 	
-INTERVAL_TIMER_CHECK:
-CMP R5, #72 // check for FPGA timer interrupt
-BNE PRIVATE_TIMER_CHECK
-BL INTERVAL_TIMER_ISR
-B EXIT_IRQ
+
 PRIVATE_TIMER_CHECK:
 CMP R5, #29 // check for FPGA timer interrupt
 BNE FPGA_IRQ1_HANDLER
@@ -580,13 +576,6 @@ STR R0, [R1,#12] // clear the interrupt
 
 BX LR
 
-INTERVAL_TIMER_ISR:
-
-LDR R1, =0xFF202000 // interval timer base address
-MOVS R0, #0
-STR R0, [R1] // clear the interrupt
-
-BX LR
 
 
 //CONFIGURATIONS
@@ -606,9 +595,7 @@ CONFIG_GIC:
 	MOV R0, #29 // Private timer port (Interrupt ID = 29)
 	MOV R1, #1
 	BL CONFIG_INTERRUPT
-	MOV R0, #72 // Interval timer port (Interrupt ID = 72)
-	MOV R1, #1
-	BL CONFIG_INTERRUPT
+	
 	/* configure the GIC CPU Interface */
 	LDR R0, =0xFFFEC100 // base address of CPU Interface
 	
@@ -635,17 +622,7 @@ MOV R1, #0xF // set interrupt mask bits
 STR R1, [R0, #0x8] // interrupt mask register is (base + 8)
 BX LR
 	
-/* Configure the FPGA interval timer to create interrupts at 50-msec intervals */
-CONFIG_INTERVAL_TIMER:
-LDR R0, =0xFF202000 // Interval timer base address
-LDR R1, =5000000 // 1/(100 MHz) ×(5000000) = 50 msec
-STR R1, [R0, #0x8] // store the low half word of counter start value
-LSR R1, R1, #16
-STR R1, [R0, #0xC] // high half word of counter start value
-// start the interval timer, enable its interrupts
-MOV R1, #0x7 // START = 1, CONT = 1, ITO = 1
-STR R1, [R0, #0x4]
-BX LR
+
 
 /* Configure the Private timer to generate interrupts */
 CONFIG_PRIVATE_TIMER:
@@ -696,4 +673,3 @@ CONFIG_INTERRUPT:
 * (only) the appropriate byte */
 	STRB R1, [R4]
 	POP {R4-R5, PC}
-	
