@@ -65,3 +65,6 @@ In the gameplay state, if a player encounters a mine, the game enters the LOST_S
 
 ### Figure5: To play the normal game in GET_MINE_LOCATIONS_BIT subroutine comment out this part
 ![Alt text](images/normal_play.png)
+
+### Figure6: 
+![Alt text](images/korkmazme.png)
